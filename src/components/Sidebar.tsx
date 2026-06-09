@@ -29,7 +29,7 @@ const TgIcon = () => (
 
 const CONTACTS = [
   { name: 'Serge Shima', handle: '@shimaoz', url: 'https://t.me/shimaoz' },
-  { name: 'Paul Deadcough', handle: '@pasha_v_tg', url: 'https://t.me/pasha_v_tg' },
+  { name: 'Paul Deadcough', handle: '@Ustinova_new', url: 'https://t.me/Ustinova_new' },
 ]
 
 const ROUTE_COLORS: Record<RouteId, string> = {
