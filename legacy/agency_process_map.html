@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Агентский процесс — интерактивная карта</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f1116; color: #e8eaed; }
+  
+  #app { display: grid; grid-template-columns: 280px 1fr 360px; height: 100vh; }
+  
+  /* SIDEBAR LEFT */
+  #sidebar { background: #161922; border-right: 1px solid #232733; padding: 18px 16px; overflow-y: auto; }
+  #sidebar h1 { font-size: 14px; letter-spacing: 0.5px; text-transform: uppercase; color: #9aa3b2; margin-bottom: 4px; }
+  #sidebar .subtitle { font-size: 11px; color: #6c7280; margin-bottom: 22px; line-height: 1.5; }
+  
+  .section { margin-bottom: 22px; }
+  .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: #6c7280; margin-bottom: 10px; font-weight: 600; }
+  
+  .filter-btn, .route-btn {
+    display: block; width: 100%; padding: 8px 10px; margin-bottom: 5px;
+    background: #1c2030; border: 1px solid #232733; color: #c9cdd5;
+    font-size: 12px; text-align: left; cursor: pointer; border-radius: 5px;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover, .route-btn:hover { background: #232a3d; border-color: #3a4358; }
+  .filter-btn.active, .route-btn.active { background: #2a3450; border-color: #4a5985; color: #fff; }
+  
+  .filter-btn .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: middle; }
+  
+  .legend-item { display: flex; align-items: center; font-size: 11px; color: #9aa3b2; margin-bottom: 6px; line-height: 1.4; }
+  .legend-swatch { width: 14px; height: 14px; border-radius: 3px; margin-right: 8px; flex-shrink: 0; }
+  .legend-line { width: 22px; height: 2px; margin-right: 8px; flex-shrink: 0; }
+  
+  /* CANVAS */
+  #canvas-wrap { position: relative; overflow: hidden; background: 
+    radial-gradient(circle at 30% 20%, #1a1f2e 0%, #0f1116 60%); }
+  #canvas { width: 100%; height: 100%; cursor: grab; }
+  #canvas:active { cursor: grabbing; }
+  
+  #zoom-controls { position: absolute; bottom: 18px; left: 18px; display: flex; flex-direction: column; gap: 6px; z-index: 10; }
+  .zoom-btn { width: 34px; height: 34px; background: #1c2030; border: 1px solid #2a2f3e; color: #c9cdd5; border-radius: 5px; cursor: pointer; font-size: 16px; }
+  .zoom-btn:hover { background: #2a3450; }
+  
+  #search-box { position: absolute; top: 18px; left: 18px; z-index: 10; }
+  #search-input { background: #1c2030; border: 1px solid #2a2f3e; color: #e8eaed; padding: 8px 12px; border-radius: 5px; font-size: 12px; width: 240px; }
+  #search-input::placeholder { color: #6c7280; }
+
+  #breadcrumb { position: absolute; top: 18px; right: 18px; z-index: 10; background: rgba(28, 32, 48, 0.85); padding: 6px 12px; border-radius: 5px; font-size: 11px; color: #9aa3b2; backdrop-filter: blur(6px); }
+
+  /* DETAILS PANEL */
+  #details { background: #161922; border-left: 1px solid #232733; padding: 18px 18px; overflow-y: auto; }
+  #details h2 { font-size: 16px; color: #fff; margin-bottom: 6px; line-height: 1.3; }
+  #details .stage-badge { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 3px; background: #2a3450; color: #c9cdd5; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  #details .desc { font-size: 12px; color: #b3b9c5; line-height: 1.55; margin-bottom: 16px; }
+  #details .options { margin-bottom: 16px; }
+  #details .options-title { font-size: 11px; text-transform: uppercase; color: #6c7280; margin-bottom: 6px; font-weight: 600; letter-spacing: 0.5px; }
+  #details .option { padding: 7px 10px; background: #1c2030; border-radius: 4px; margin-bottom: 4px; font-size: 12px; color: #c9cdd5; border-left: 3px solid #4a5985; }
+  #details .option.added { border-left-color: #2dd4bf; }
+  #details .option.hanging { border-left-color: #ef4444; }
+  
+  #details .links-block { margin-top: 18px; padding-top: 14px; border-top: 1px solid #232733; }
+  #details .link-group { margin-bottom: 12px; }
+  #details .link-group-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #6c7280; margin-bottom: 6px; }
+  #details .link-item { font-size: 12px; padding: 5px 8px; margin-bottom: 3px; background: #14171f; border-radius: 4px; cursor: pointer; color: #b3b9c5; transition: all 0.1s; }
+  #details .link-item:hover { background: #2a3450; color: #fff; }
+  #details .link-arrow { color: #6c7280; margin: 0 5px; }
+  
+  .note { font-size: 11px; color: #fbbf24; padding: 8px 10px; background: rgba(251, 191, 36, 0.08); border-left: 3px solid #fbbf24; border-radius: 3px; margin-bottom: 12px; }
+  .note.added { color: #2dd4bf; background: rgba(45, 212, 191, 0.08); border-left-color: #2dd4bf; }
+  .note.hanging { color: #f87171; background: rgba(239, 68, 68, 0.08); border-left-color: #ef4444; }
+
+  #empty-state { color: #6c7280; font-size: 13px; text-align: center; margin-top: 60px; line-height: 1.6; }
+  
+  /* SVG STYLES */
+  .stage-bg { fill: none; stroke: #2a2f3e; stroke-width: 1; stroke-dasharray: 4 4; opacity: 0.6; }
+  .stage-label { fill: #6c7280; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
+  .stage-num { fill: #4a5985; font-size: 36px; font-weight: 800; opacity: 0.25; }
+  
+  .group-label { fill: #9aa3b2; font-size: 10px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+  .group-bg { fill: rgba(35, 39, 51, 0.4); stroke: #2a2f3e; stroke-width: 1; rx: 8; }
+  
+  .node { cursor: pointer; transition: opacity 0.2s; }
+  .node-bg { fill: #1c2030; stroke: #3a4358; stroke-width: 1.5; transition: all 0.15s; }
+  .node-bg.added { fill: #0f2d2a; stroke: #2dd4bf; }
+  .node-bg.hanging { fill: #2d0f15; stroke: #ef4444; stroke-dasharray: 3 3; }
+  .node:hover .node-bg { stroke: #fbbf24; stroke-width: 2.5; }
+  .node.selected .node-bg { stroke: #fbbf24; stroke-width: 3; fill: #2a2419; }
+  .node.dimmed { opacity: 0.18; }
+  
+  .node-label { fill: #e8eaed; font-size: 11px; font-weight: 500; pointer-events: none; }
+  .node-sublabel { fill: #9aa3b2; font-size: 9px; pointer-events: none; }
+  
+  .link { fill: none; stroke-width: 1.5; opacity: 0.5; transition: all 0.2s; }
+  .link.dataflow { stroke: #60a5fa; }
+  .link.content { stroke: #34d399; stroke-dasharray: 5 3; }
+  .link.synergy { stroke: #fbbf24; stroke-dasharray: 2 4; opacity: 0.4; }
+  .link.dimmed { opacity: 0.06; }
+  .link.highlighted { opacity: 1; stroke-width: 2.5; }
+  
+  .link-arrow-fill-blue { fill: #60a5fa; }
+  .link-arrow-fill-green { fill: #34d399; }
+  .link-arrow-fill-yellow { fill: #fbbf24; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- LEFT SIDEBAR -->
+  <aside id="sidebar">
+    <h1>Агентский процесс</h1>
+    <div class="subtitle">5 этапов · потоки данных · связи по содержанию · синергии · висящие узлы</div>
+
+    <div class="section">
+      <div class="section-title">Типы связей</div>
+      <button class="filter-btn active" data-filter="all"><span class="swatch" style="background:#9aa3b2"></span>Все связи</button>
+      <button class="filter-btn" data-filter="dataflow"><span class="swatch" style="background:#60a5fa"></span>Поток данных</button>
+      <button class="filter-btn" data-filter="content"><span class="swatch" style="background:#34d399"></span>Связь по содержанию</button>
+      <button class="filter-btn" data-filter="synergy"><span class="swatch" style="background:#fbbf24"></span>Синергии</button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Маршруты</div>
+      <button class="route-btn active" data-route="all">Полный процесс</button>
+      <button class="route-btn" data-route="launch">Лонч нового продукта</button>
+      <button class="route-btn" data-route="attack">Атака на конкурента</button>
+      <button class="route-btn" data-route="frequency">Рост частоты у лояльных</button>
+      <button class="route-btn" data-route="trust">Завоевать доверие новых</button>
+      <button class="route-btn" data-route="premium">Премиализация / рост цены</button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Легенда узлов</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:#1c2030;border:1.5px solid #3a4358"></span>Из документа</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:#0f2d2a;border:1.5px solid #2dd4bf"></span>Дополнено (опции/связи)</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:#2d0f15;border:1.5px dashed #ef4444"></span>Висящий — нужна методика</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Подсказки</div>
+      <div style="font-size:11px;color:#6c7280;line-height:1.6;">
+        · Клик по узлу — детали справа<br>
+        · Наведение — подсветка цепочек<br>
+        · Колесо — зум, перетаскивание — пан<br>
+        · Поиск — по названию узла
+      </div>
+    </div>
+  </aside>
+
+  <!-- CANVAS -->
+  <main id="canvas-wrap">
+    <div id="search-box">
+      <input id="search-input" type="text" placeholder="Поиск узла…">
+    </div>
+    <div id="breadcrumb">Этапы: <b style="color:#fff">Брифинг → Стратег → Креатор → Продюсер → Презентер</b></div>
+    <svg id="canvas" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="zoom-controls">
+      <button class="zoom-btn" id="zoom-in">+</button>
+      <button class="zoom-btn" id="zoom-out">−</button>
+      <button class="zoom-btn" id="zoom-reset" style="font-size:11px">⊙</button>
+    </div>
+  </main>
+
+  <!-- RIGHT DETAILS -->
+  <aside id="details">
+    <div id="empty-state">
+      Выберите узел на карте,<br>чтобы увидеть его содержимое,<br>входы и выходы.
+    </div>
+  </aside>
+</div>
+
+<script>
+// ============================================================================
+// DATA MODEL
+// ============================================================================
+
+const STAGES = [
+  { id: 'brief',     name: 'Брифинг',   num: '1', x: 0,    color: '#60a5fa' },
+  { id: 'strategy',  name: 'Стратег',   num: '2', x: 1100, color: '#a78bfa' },
+  { id: 'creator',   name: 'Креатор',   num: '3', x: 2200, color: '#f472b6' },
+  { id: 'producer',  name: 'Продюсер',  num: '4', x: 3300, color: '#fb923c' },
+  { id: 'presenter', name: 'Презентер', num: '5', x: 4400, color: '#34d399' }
+];
+
+// kind: "doc" (из документа), "added" (моё дополнение), "hanging" (висит)
+const NODES = [
+  // === STAGE 1: BRIEF ===
+  // Group: Задача бизнеса
+  { id: 'b_what_is', stage: 'brief', group: 'Задача бизнеса · что есть', x: 80,  y: 100, w: 220,
+    title: 'Продукт и УТП', kind: 'doc',
+    desc: 'Что физически продаётся, в чём отличие от аналогов, цена.',
+    options: ['Продукт', 'УТП', 'Цена', 'Идея бизнеса (что нового)']
+  },
+  { id: 'b_market_type', stage: 'brief', group: 'Задача бизнеса · что есть', x: 80, y: 200, w: 220,
+    title: 'Тип рынка', kind: 'doc',
+    desc: 'Категориальный режим. Определяет всё дальше: тип сигнала, тип сообщения, тип RTB.',
+    options: ['FMCG (быстрый сигнал)', 'GLORY (доказательства)', 'LOVEMARK (идентичность)']
+  },
+  { id: 'b_position', stage: 'brief', group: 'Задача бизнеса · что есть', x: 80, y: 300, w: 220,
+    title: 'Позиция на рынке', kind: 'doc',
+    desc: 'Положение в матрице позиционирования и доступность.',
+    options: ['Положение в матрице (16 ячеек)', 'Ментальная доступность', 'Физическая доступность']
+  },
+  { id: 'b_brand_assets', stage: 'brief', group: 'Задача бизнеса · что есть', x: 80, y: 400, w: 220,
+    title: 'Бренд-активы', kind: 'doc',
+    desc: 'Что уже есть, на чём строить коммуникацию.',
+    options: ['Идея бренда (за что, кроме продаж)', 'Слоган', 'Долгосрочная рекламная идея', 'TOV (тон голоса)']
+  },
+  { id: 'b_goals', stage: 'brief', group: 'Задача бизнеса · чего хотим', x: 80, y: 510, w: 220,
+    title: 'Бизнес-цель', kind: 'doc',
+    desc: 'Что должно измениться в бизнесе. Срок и масштаб.',
+    options: ['Рост продаж (срок)', 'Лонч', 'Задавить конкурента', 'Премиализация (доп.)', 'Удержать долю (доп.)']
+  },
+
+  // Group: Маркетинг цель
+  { id: 'b_audience', stage: 'brief', group: 'Маркетинг-цель', x: 380, y: 100, w: 240,
+    title: 'Аудитория коммуникации', kind: 'doc',
+    desc: 'Кому говорим. Не социодем, а отношение к категории и бренду.',
+    options: ['Все', 'Свои (лояльные / ядро)', 'Свичеры / редкие', 'Чужие', 'Новые', 'Сегмент', 'Инфлюенсеры', 'Комьюнити', 'Ритейл', 'Бизнес']
+  },
+  { id: 'b_competitors', stage: 'brief', group: 'Маркетинг-цель', x: 380, y: 280, w: 240,
+    title: 'Конкуренты и их каналы', kind: 'doc',
+    desc: 'С кем боремся за внимание и деньги.',
+    options: ['По индустрии (прямые)', 'По функции (заменители)', 'По контексту (за время/деньги)', 'Каналы каждого']
+  },
+  { id: 'b_change_type', stage: 'brief', group: 'Маркетинг-цель', x: 380, y: 430, w: 240,
+    title: 'Тип изменения (цель коммуникации)', kind: 'doc',
+    desc: 'Самый мощный узел этапа. От этого зависит сигнал, режим, каналы и KPI.',
+    options: ['Знание', 'Заметность', 'Понимание', 'Рассмотрение', 'Проба', 'Частота', 'Объём покупки', 'Рост цены', 'Рекомендация']
+  },
+
+  // === STAGE 2: STRATEGY ===
+  // Group: Проблема поведения
+  { id: 's_barrier', stage: 'strategy', group: 'Проблема поведения', x: 1180, y: 90, w: 240,
+    title: 'Очевидный барьер', kind: 'doc',
+    desc: 'Первый поверхностный диагноз: что мешает покупке прямо сейчас.',
+    options: ['Не видит (шум)', 'Не понимает (сложность)', 'Не доверяет (бренд)', 'Не пробует (мотив)']
+  },
+  { id: 's_gap', stage: 'strategy', group: 'Проблема поведения', x: 1180, y: 220, w: 240,
+    title: 'Внутренний разрыв SAY-THINK-DO', kind: 'doc',
+    desc: 'Behaviour Gap: где расходятся слова, мысли и поведение.',
+    options: ['SAY-THINK (легализация)', 'THINK-DO (нормализация)', 'SAY-DO (переосмысление)', 'Все три (смена идентичности)']
+  },
+  { id: 's_insight', stage: 'strategy', group: 'Проблема поведения', x: 1180, y: 360, w: 240,
+    title: 'Инсайт — почему так думают', kind: 'doc',
+    desc: 'Скрытая правда. В исходнике упомянуты «36 типов секретов» — методика не раскрыта в этом документе, нужна отдельная карта типов.',
+    options: ['Тип секрета (1 из 36)', 'Формулировка инсайта', '🚩 Доказательство (источник, цитата)']
+  },
+  { id: 's_psyche', stage: 'strategy', group: 'Проблема поведения', x: 1180, y: 500, w: 240,
+    title: 'Психопортрет (Psycheya)', kind: 'doc',
+    desc: 'Глубокий профиль: эволюционная стратегия, нейрохимия, архетип, страхи и мотивы.',
+    options: ['Психотип / архетип', 'Слабости и страхи', 'Мотивы (что движет)', 'Отношение к коммуникации', 'Нейрохимический профиль']
+  },
+
+  // Group: Стратегия коммуникации
+  { id: 's_strategy_type', stage: 'strategy', group: 'Стратегия коммуникации', x: 1500, y: 90, w: 240,
+    title: 'Тип стратегии', kind: 'doc',
+    desc: 'Что именно строит коммуникация: знание, понимание или действие.',
+    options: ['Имидж бренда (знание, ценности)', 'Выгода товара (понимание, отличие)', 'Активация продаж (проба, повтор)']
+  },
+  { id: 's_mode', stage: 'strategy', group: 'Стратегия коммуникации', x: 1500, y: 250, w: 240,
+    title: 'Режим коммуникации', kind: 'doc',
+    desc: 'Как должна работать реклама. Выводится напрямую из типа разрыва SAY-THINK-DO.',
+    options: ['Легализация («это разрешено»)', 'Нормализация («это обычная практика»)', 'Переосмысление («понимать иначе»)', 'Смена идентичности («я такой человек»)']
+  },
+
+  // Group: Сообщение
+  { id: 's_signal', stage: 'strategy', group: 'Сообщение', x: 1820, y: 60, w: 240,
+    title: 'Сигнал по SSS', kind: 'doc',
+    desc: 'Биологический сигнал кампании. Один первичный сигнал — иначе размывается.',
+    options: ['🔴 SHIELD — выживание / потеря', '🟡 SNACK — приобретение / выгода', '🟢 SEED — статус / наследие']
+  },
+  { id: 's_persuasion', stage: 'strategy', group: 'Сообщение', x: 1820, y: 200, w: 240,
+    title: 'Принцип убеждения (Чалдини)', kind: 'doc',
+    desc: 'Какой языковой механизм работает на этом психотипе и при этом разрыве.',
+    options: ['Взаимность', 'Симпатия', 'Социальное доказательство', 'Авторитет', 'Дефицит', 'Последовательность', 'Общность']
+  },
+  { id: 's_tov', stage: 'strategy', group: 'Сообщение', x: 1820, y: 360, w: 240,
+    title: 'Личность и тональность', kind: 'doc',
+    desc: 'Как звучит бренд в этой кампании. Должно опираться на TOV из брифа.',
+    options: ['Личность (характер)', 'Тональность (эмоция)', 'Регистр (формальность)']
+  },
+  { id: 's_message', stage: 'strategy', group: 'Сообщение', x: 1820, y: 480, w: 240,
+    title: 'Основное сообщение / бенефит', kind: 'doc',
+    desc: 'Главная мысль одной фразой. Работает в связке с сигналом и принципом убеждения.',
+    options: ['Функциональный бенефит', 'Эмоциональный бенефит', 'Социальный бенефит']
+  },
+  { id: 's_adapt', stage: 'strategy', group: 'Сообщение', x: 1820, y: 600, w: 240,
+    title: 'Адаптация к сегменту', kind: 'doc',
+    desc: 'Сообщение разворачивается под каждую аудиторию из брифа.',
+    options: ['По сегментам (Свои / Свичеры / Чужие …)', 'По стадии воронки', 'По контексту потребления']
+  },
+  { id: 's_rtb', stage: 'strategy', group: 'Сообщение', x: 1820, y: 720, w: 240,
+    title: 'RTB — основания доверять', kind: 'doc',
+    desc: 'Почему верить сообщению. Тип RTB зависит от типа рынка.',
+    options: ['Факты / цифры (FMCG)', 'Доказательства / эксперты (GLORY)', 'История / общность (LOVEMARK)']
+  },
+
+  // Group: Каналы донесения
+  { id: 's_channels_priority', stage: 'strategy', group: 'Каналы донесения', x: 2150, y: 100, w: 220,
+    title: 'Приоритетные каналы', kind: 'doc',
+    desc: 'Каналы определяются режимом коммуникации (режим → набор каналов).',
+    options: ['Главный канал', 'Поддерживающие', 'Реактивные / комьюнити']
+  },
+  { id: 's_channel_brief', stage: 'strategy', group: 'Каналы донесения', x: 2150, y: 230, w: 220,
+    title: 'Адаптация под канал (бриф)', kind: 'doc',
+    desc: 'Каждому каналу — свой бриф с учётом контекста потребления.',
+    options: ['Длительность / формат', 'Контекст внимания', 'Призыв к действию']
+  },
+  { id: 's_integration', stage: 'strategy', group: 'Каналы донесения', x: 2150, y: 360, w: 220,
+    title: 'Принципы интеграции', kind: 'doc',
+    desc: 'Как каналы усиливают друг друга, а не повторяют.',
+    options: ['Распределение ролей', 'Передача между каналами', 'Единый креативный код']
+  },
+
+  // === STAGE 3: CREATOR ===
+  // Group: Креативная стратегия
+  { id: 'c_big_idea', stage: 'creator', group: 'Креативная стратегия', x: 2380, y: 90, w: 240,
+    title: 'Big Idea (360°)', kind: 'doc',
+    desc: 'Центральная идея кампании. В исходнике упомянуты 18 креативных паттернов — конкретный список не приведён.',
+    options: ['Паттерн (1 из 18)', 'Формулировка идеи (одно предложение)', 'Мост к сообщению', '🚩 Тест простоты']
+  },
+  { id: 'c_activations', stage: 'creator', group: 'Креативная стратегия', x: 2380, y: 240, w: 240,
+    title: 'Идеи активаций', kind: 'doc',
+    desc: 'Зависят от типа изменения. В исходнике упомянуты «виды активаций / маркетинг вовлечения» — типология не раскрыта.',
+    options: ['Под Знание (стант, культурный объект)', 'Под Пробу (sampling, демо)', 'Под Частоту (ритуал, программа)', 'Под Рекомендацию (UGC, реферал)', '🚩 Полная таксономия активаций']
+  },
+  { id: 'c_non_ad', stage: 'creator', group: 'Креативная стратегия', x: 2380, y: 410, w: 240,
+    title: 'Нерекламные идеи', kind: 'doc',
+    desc: 'Создать что-то полезное вместо коммуникации: продукт, сервис, утилита, культурный объект.',
+    options: ['Утилита / сервис', 'Продукт-расширение', 'Культурный объект / событие', 'Бренд-ритуал']
+  },
+
+  // Group: Экзекюшен
+  { id: 'e_carriers', stage: 'creator', group: 'Экзекюшен', x: 2700, y: 60, w: 230,
+    title: 'Носители', kind: 'doc',
+    desc: 'Конкретные форматы: ролик, OOH, пост, лендинг, упаковка, событие.',
+    options: ['Видео (TVC / digital)', 'OOH / DOOH', 'Соцсети', 'Web / лендинг', 'Упаковка / POSM', 'Событие']
+  },
+  { id: 'e_copy', stage: 'creator', group: 'Экзекюшен', x: 2700, y: 200, w: 230,
+    title: 'Тексты и запретные формулировки', kind: 'doc',
+    desc: 'Копирайт всех носителей. Запретные формулировки — фразы, которых не может быть в этой кампании.',
+    options: ['Заголовки / клеймы', 'Тексты роликов', 'Запретный список', 'Юридические ограничения']
+  },
+  { id: 'e_design', stage: 'creator', group: 'Экзекюшен', x: 2700, y: 340, w: 230,
+    title: 'Дизайн и визуальные правила', kind: 'doc',
+    desc: 'Гайдлайны, цвет, типографика, обращение с логотипом.',
+    options: ['Цветовая палитра', 'Типографика', 'Композиция / сетка', 'Логотип-правила']
+  },
+  { id: 'e_materials', stage: 'creator', group: 'Экзекюшен', x: 2700, y: 460, w: 230,
+    title: 'Материалы (продакшн-листы)', kind: 'doc',
+    desc: 'Что физически нужно произвести: ассеты, тиражи, форматы.',
+    options: ['Видео-ассеты', 'Графика / печать', 'POSM / сувениры', 'Веб-ассеты']
+  },
+  { id: 'e_scenarios', stage: 'creator', group: 'Экзекюшен', x: 2700, y: 580, w: 230,
+    title: 'Сценарии, рубрики, форматы', kind: 'doc',
+    desc: 'Драматургия: как выглядит сюжет ролика, контент-рубрика, серийный формат.',
+    options: ['Сюжет ролика', 'Контент-рубрики', 'Серийный формат', 'Сторилайн кампании']
+  },
+  { id: 'e_mechanics', stage: 'creator', group: 'Экзекюшен', x: 2700, y: 700, w: 230,
+    title: 'Механика мотивации (CFR)', kind: 'doc',
+    desc: 'Правила активации: участие, призы, условия. CFR — методика не раскрыта в исходнике.',
+    options: ['Условия участия', 'Призы / награды', 'Подтверждение / верификация', '🚩 CFR-протокол (методика)']
+  },
+
+  // === STAGE 4: PRODUCER ===
+  { id: 'p_priority', stage: 'producer', group: 'Коммуникационный план', x: 3380, y: 90, w: 240,
+    title: 'Приоритет охвата', kind: 'doc',
+    desc: 'Что важнее: запрос, релевантность, присутствие или охват. Зависит от типа изменения.',
+    options: ['Request (закрыть запрос)', 'Relevance (быть в моменте)', 'Residence (постоянное присутствие)', 'Reach (массовый охват)']
+  },
+  { id: 'p_flights', stage: 'producer', group: 'Коммуникационный план', x: 3380, y: 230, w: 240,
+    title: 'Флайты и кампании', kind: 'doc',
+    desc: 'Структура запусков во времени.',
+    options: ['Лонч-флайт', 'Поддержка', 'Сезонные пики', 'Always-on']
+  },
+  { id: 'p_calendar', stage: 'producer', group: 'Коммуникационный план', x: 3380, y: 360, w: 240,
+    title: 'Календарь и план размещения', kind: 'doc',
+    desc: 'Конкретные даты по каждому каналу.',
+    options: ['Медиа-сетка', 'Контент-календарь', 'События и активации']
+  },
+  { id: 'p_cost', stage: 'producer', group: 'Коммуникационный план', x: 3380, y: 480, w: 240,
+    title: 'Стоимость производства и размещения', kind: 'doc',
+    desc: 'Смета: разработка, продакшн, медиа.',
+    options: ['Разработка (агентство)', 'Производство (продакшн)', 'Размещение (медиа)', 'Резерв 10–15%']
+  },
+  { id: 'p_timing', stage: 'producer', group: 'Коммуникационный план', x: 3380, y: 600, w: 240,
+    title: 'Тайминг подготовки и запуска', kind: 'doc',
+    desc: 'Обратный отсчёт от даты запуска.',
+    options: ['Согласование стратегии', 'Креатив + ревью', 'Продакшн', 'Закупка медиа', 'Лонч-неделя']
+  },
+  { id: 'p_budget_kpi', stage: 'producer', group: 'Коммуникационный план', x: 3380, y: 720, w: 240,
+    title: 'Бюджет vs KPI', kind: 'doc',
+    desc: 'Эффективность бюджета. Каждый KPI должен быть привязан к типу изменения из брифа.',
+    options: ['Reach', 'Impressions', 'Engagement', 'Trial', 'Conversion', 'Sales', 'Re-purchase']
+  },
+
+  // === STAGE 5: PRESENTER ===
+  { id: 'pr_tender', stage: 'presenter', group: 'Презентация', x: 4480, y: 90, w: 240,
+    title: 'Оценка тендерных критериев', kind: 'doc',
+    desc: 'Сверка решения с явными и скрытыми критериями клиента.',
+    options: ['Явные критерии (бриф)', 'Скрытые критерии (контекст)', 'Стоп-факторы', 'Усилители']
+  },
+  { id: 'pr_format', stage: 'presenter', group: 'Презентация', x: 4480, y: 230, w: 240,
+    title: 'Форматирование документа', kind: 'doc',
+    desc: 'Структура deck: нарратив, ритм слайдов, плотность.',
+    options: ['Нарратив (challenge → ответ)', 'Структура слайдов', 'Плотность / ритм', 'Цитируемые блоки']
+  },
+  { id: 'pr_visuals', stage: 'presenter', group: 'Презентация', x: 4480, y: 370, w: 240,
+    title: 'ТЗ на иллюстрации', kind: 'doc',
+    desc: 'Промпты и брифы для визуалов (AI или дизайнер).',
+    options: ['AI-промпты', 'Мудборды', 'Скетчи / макеты', 'Реф-кадры']
+  },
+  { id: 'pr_interactive', stage: 'presenter', group: 'Презентация', x: 4480, y: 490, w: 240,
+    title: 'Интерактивная презентация', kind: 'doc',
+    desc: 'HTML/web-формат для отправки клиенту.',
+    options: ['Кликабельные слайды', 'Видео-вставки', 'Ссылки на симуляции']
+  },
+  { id: 'pr_simulation', stage: 'presenter', group: 'Презентация', x: 4480, y: 600, w: 240,
+    title: 'Симуляция реализации', kind: 'doc',
+    desc: 'Прототипы носителей, мокапы, демо-ролики — как кампания будет жить в реальности.',
+    options: ['Мокапы носителей', 'Демо-ролики', 'Прототипы цифровых продуктов']
+  },
+  { id: 'pr_packaging', stage: 'presenter', group: 'Презентация', x: 4480, y: 710, w: 240,
+    title: 'Упаковка решений в агентов / скилы', kind: 'doc',
+    desc: 'Передача проекта в исполнение: что становится переиспользуемым активом.',
+    options: ['Бренд-агент', 'Контент-скилы', 'Шаблоны брифов', 'Архив решений']
+  }
+];
+
+// ============================================================================
+// LINKS
+// kind: dataflow (вывод→вход), content (значение→значение), synergy (взаимная согласованность)
+// added: true — связь добавлена мной поверх документа
+// ============================================================================
+
+const LINKS = [
+  // === BRIEF internal ===
+  { from: 'b_market_type', to: 'b_brand_assets', kind: 'synergy', label: 'тип рынка задаёт тип TOV' },
+  { from: 'b_audience', to: 'b_change_type', kind: 'dataflow', label: 'аудитория ограничивает тип изменения' },
+  { from: 'b_competitors', to: 'b_position', kind: 'dataflow' },
+  { from: 'b_goals', to: 'b_change_type', kind: 'dataflow', label: 'бизнес-цель → коммуникационная цель' },
+
+  // === BRIEF → STRATEGY ===
+  // потоки данных
+  { from: 'b_audience', to: 's_psyche', kind: 'dataflow', label: 'аудитория → психопортрет' },
+  { from: 'b_audience', to: 's_adapt', kind: 'dataflow', label: 'сегменты → адаптация' },
+  { from: 'b_change_type', to: 's_strategy_type', kind: 'dataflow' },
+  { from: 'b_change_type', to: 's_signal', kind: 'dataflow', label: 'цель определяет SSS' },
+  { from: 'b_competitors', to: 's_barrier', kind: 'dataflow' },
+  { from: 'b_brand_assets', to: 's_tov', kind: 'dataflow', label: 'TOV → тональность сообщения' },
+  { from: 'b_market_type', to: 's_rtb', kind: 'dataflow', label: 'тип рынка → тип RTB' },
+  { from: 'b_position', to: 's_strategy_type', kind: 'dataflow' },
+
+  // связи по содержанию (значение → значение)
+  { from: 'b_change_type', to: 's_signal', kind: 'content', label: 'Знание/Заметность ⇒ SEED · Проба ⇒ SNACK · Рост цены ⇒ SHIELD', added: true },
+  { from: 'b_market_type', to: 's_rtb', kind: 'content', label: 'FMCG⇒цифры · GLORY⇒эксперты · LOVEMARK⇒история', added: true },
+  { from: 'b_market_type', to: 's_persuasion', kind: 'content', label: 'GLORY ⇒ Авторитет · LOVEMARK ⇒ Общность · FMCG ⇒ Соцдоказательство', added: true },
+  { from: 'b_audience', to: 's_psyche', kind: 'content', label: 'Свои⇒удержание · Чужие⇒переключение · Новые⇒легитимация', added: true },
+
+  // === STRATEGY internal ===
+  { from: 's_barrier', to: 's_gap', kind: 'dataflow', label: 'барьер уточняется через разрыв' },
+  { from: 's_gap', to: 's_mode', kind: 'dataflow', label: 'тип разрыва → режим' },
+  { from: 's_psyche', to: 's_signal', kind: 'dataflow', label: 'психотип → дефолтный сигнал' },
+  { from: 's_psyche', to: 's_persuasion', kind: 'dataflow', label: 'психотип + разрыв → Чалдини' },
+  { from: 's_gap', to: 's_persuasion', kind: 'dataflow' },
+  { from: 's_insight', to: 's_message', kind: 'dataflow', label: 'инсайт → сообщение' },
+  { from: 's_signal', to: 's_message', kind: 'dataflow' },
+  { from: 's_strategy_type', to: 's_message', kind: 'dataflow' },
+  { from: 's_message', to: 's_adapt', kind: 'dataflow' },
+  { from: 's_message', to: 's_rtb', kind: 'synergy' },
+  { from: 's_tov', to: 's_message', kind: 'synergy' },
+
+  // связи по содержанию внутри стратегии
+  { from: 's_gap', to: 's_mode', kind: 'content', label: 'SAY-THINK⇒Легализация · THINK-DO⇒Нормализация · SAY-DO⇒Переосмысление · все⇒Идентичность', added: true },
+  { from: 's_barrier', to: 's_gap', kind: 'content', label: 'Не доверяет⇒SAY-THINK · Не пробует⇒THINK-DO · Не понимает⇒SAY-DO', added: true },
+  { from: 's_psyche', to: 's_signal', kind: 'content', label: 'эволюционная стратегия = доминирующий сигнал', added: true },
+
+  { from: 's_mode', to: 's_channels_priority', kind: 'dataflow', label: 'режим → набор каналов' },
+  { from: 's_mode', to: 's_channels_priority', kind: 'content', label: 'Легализация⇒авторитеты+PR · Нормализация⇒массовые · Переосмысление⇒сторителлинг · Идентичность⇒комьюнити', added: true },
+  { from: 's_adapt', to: 's_channel_brief', kind: 'dataflow' },
+  { from: 's_channels_priority', to: 's_integration', kind: 'dataflow' },
+
+  // === STRATEGY → CREATOR ===
+  { from: 's_message', to: 'c_big_idea', kind: 'dataflow', label: 'сообщение → Big Idea' },
+  { from: 's_signal', to: 'c_big_idea', kind: 'synergy' },
+  { from: 's_insight', to: 'c_big_idea', kind: 'dataflow' },
+  { from: 'b_change_type', to: 'c_activations', kind: 'dataflow', label: 'тип изменения → тип активации' },
+  { from: 'b_change_type', to: 'c_activations', kind: 'content', label: 'Проба⇒sampling · Частота⇒ритуал · Рекомендация⇒UGC/реферал · Знание⇒стант', added: true },
+  { from: 's_strategy_type', to: 'c_non_ad', kind: 'dataflow', label: 'имидж-стратегия часто рождает нерекламные идеи' },
+  { from: 's_channels_priority', to: 'e_carriers', kind: 'dataflow', label: 'каналы → носители' },
+  { from: 's_tov', to: 'e_copy', kind: 'dataflow', label: 'тональность → тексты' },
+  { from: 's_message', to: 'e_copy', kind: 'dataflow' },
+  { from: 's_persuasion', to: 'e_copy', kind: 'synergy', label: 'Чалдини живёт в формулировках' },
+
+  // === CREATOR internal ===
+  { from: 'c_big_idea', to: 'e_carriers', kind: 'dataflow' },
+  { from: 'c_big_idea', to: 'e_scenarios', kind: 'dataflow' },
+  { from: 'c_big_idea', to: 'e_design', kind: 'synergy' },
+  { from: 'c_activations', to: 'e_mechanics', kind: 'dataflow' },
+  { from: 'c_activations', to: 'e_scenarios', kind: 'dataflow' },
+  { from: 'c_non_ad', to: 'e_carriers', kind: 'dataflow' },
+  { from: 'e_carriers', to: 'e_materials', kind: 'dataflow' },
+  { from: 'e_design', to: 'e_materials', kind: 'dataflow' },
+  { from: 'e_copy', to: 'e_scenarios', kind: 'synergy' },
+  { from: 'b_brand_assets', to: 'e_design', kind: 'synergy', label: 'визуал должен попадать в бренд-активы' },
+
+  // === CREATOR → PRODUCER ===
+  { from: 'b_change_type', to: 'p_priority', kind: 'dataflow', label: 'тип изменения → приоритет охвата' },
+  { from: 'b_change_type', to: 'p_priority', kind: 'content', label: 'Знание⇒Reach · Рассмотрение⇒Relevance · Частота⇒Residence · Проба⇒Request', added: true },
+  { from: 'e_materials', to: 'p_cost', kind: 'dataflow' },
+  { from: 'e_carriers', to: 'p_calendar', kind: 'dataflow' },
+  { from: 's_channels_priority', to: 'p_calendar', kind: 'dataflow' },
+  { from: 's_integration', to: 'p_flights', kind: 'dataflow' },
+  { from: 'b_goals', to: 'p_timing', kind: 'dataflow', label: 'срок цели → тайминг' },
+  { from: 'b_change_type', to: 'p_budget_kpi', kind: 'dataflow', label: 'тип изменения → KPI' },
+  { from: 'b_change_type', to: 'p_budget_kpi', kind: 'content', label: 'Знание⇒Reach/Impr · Проба⇒Trial · Частота⇒Re-purchase · Рекомендация⇒Engagement', added: true },
+  { from: 'p_priority', to: 'p_flights', kind: 'dataflow' },
+  { from: 'p_flights', to: 'p_calendar', kind: 'dataflow' },
+  { from: 'p_calendar', to: 'p_timing', kind: 'dataflow' },
+  { from: 'p_calendar', to: 'p_cost', kind: 'dataflow' },
+  { from: 'p_cost', to: 'p_budget_kpi', kind: 'synergy' },
+
+  // === PRODUCER → PRESENTER ===
+  { from: 'b_goals', to: 'pr_tender', kind: 'dataflow', label: 'бизнес-цель = критерий тендера' },
+  { from: 'p_budget_kpi', to: 'pr_tender', kind: 'synergy' },
+  { from: 'c_big_idea', to: 'pr_format', kind: 'dataflow', label: 'Big Idea = ось нарратива' },
+  { from: 's_insight', to: 'pr_format', kind: 'dataflow', label: 'инсайт = ось драматургии' },
+  { from: 'e_design', to: 'pr_visuals', kind: 'dataflow' },
+  { from: 'e_carriers', to: 'pr_simulation', kind: 'dataflow' },
+  { from: 'e_scenarios', to: 'pr_simulation', kind: 'dataflow' },
+  { from: 'pr_format', to: 'pr_interactive', kind: 'dataflow' },
+  { from: 'pr_visuals', to: 'pr_interactive', kind: 'dataflow' },
+  { from: 'pr_interactive', to: 'pr_packaging', kind: 'dataflow' },
+
+  // === SYNERGIES (cross-stage, double-check) ===
+  { from: 'b_brand_assets', to: 's_tov', kind: 'synergy', label: 'TOV должен совпадать' },
+  { from: 'b_brand_assets', to: 'e_copy', kind: 'synergy' },
+  { from: 's_tov', to: 'e_copy', kind: 'synergy', label: 'тональность × тексты × бренд-голос' },
+  { from: 's_signal', to: 'p_budget_kpi', kind: 'synergy', label: 'KPI должен мерить выбранный сигнал', added: true },
+  { from: 's_insight', to: 'pr_tender', kind: 'synergy', label: 'инсайт = главный аргумент тендера', added: true },
+  { from: 'b_competitors', to: 's_signal', kind: 'content', label: 'если конкурент бьёт SHIELD — мы можем взять SNACK или SEED', added: true },
+  { from: 'b_position', to: 's_strategy_type', kind: 'content', label: 'позиция в матрице → имидж/выгода/активация', added: true }
+];
+
+// ============================================================================
+// ROUTES — preset paths
+// ============================================================================
+const ROUTES = {
+  all: null,
+  launch: ['b_what_is','b_market_type','b_goals','b_audience','b_change_type','s_barrier','s_psyche','s_strategy_type','s_signal','s_message','s_channels_priority','c_big_idea','c_activations','e_carriers','e_copy','p_priority','p_flights','p_calendar','p_budget_kpi','pr_format','pr_simulation'],
+  attack: ['b_competitors','b_position','b_goals','b_change_type','s_barrier','s_gap','s_insight','s_strategy_type','s_signal','s_message','s_persuasion','s_channels_priority','c_big_idea','e_copy','p_priority','p_flights','p_budget_kpi','pr_tender'],
+  frequency: ['b_audience','b_change_type','b_brand_assets','s_psyche','s_gap','s_mode','s_signal','s_message','s_tov','c_activations','e_mechanics','e_scenarios','p_priority','p_flights','p_calendar','p_budget_kpi'],
+  trust: ['b_market_type','b_audience','b_change_type','s_barrier','s_gap','s_insight','s_psyche','s_mode','s_signal','s_persuasion','s_message','s_rtb','s_channels_priority','c_big_idea','e_copy','p_priority','p_budget_kpi'],
+  premium: ['b_market_type','b_brand_assets','b_position','b_change_type','s_psyche','s_strategy_type','s_signal','s_tov','s_message','s_rtb','c_big_idea','c_non_ad','e_design','e_copy','p_priority','p_budget_kpi','pr_visuals']
+};
+
+// ============================================================================
+// RENDER
+// ============================================================================
+
+const svg = document.getElementById('canvas');
+const NODE_H = 56;
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+let viewBox = { x: -50, y: 0, w: 5000, h: 850 };
+let selectedNode = null;
+let hoveredNode = null;
+let activeFilter = 'all';
+let activeRoute = 'all';
+
+function $(tag, attrs = {}, parent = null) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(el);
+  return el;
+}
+
+function nodeById(id) { return NODES.find(n => n.id === id); }
+
+function renderSVG() {
+  svg.innerHTML = '';
+  svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+  // defs — arrows
+  const defs = $('defs', {}, svg);
+  ['blue','green','yellow'].forEach((c, i) => {
+    const fill = ['#60a5fa','#34d399','#fbbf24'][i];
+    const m = $('marker', { id: `arrow-${c}`, markerWidth: 8, markerHeight: 8, refX: 7, refY: 4, orient: 'auto', markerUnits: 'userSpaceOnUse' }, defs);
+    $('path', { d: 'M0,0 L8,4 L0,8 Z', fill }, m);
+  });
+
+  // stage backgrounds
+  STAGES.forEach(s => {
+    $('rect', { class: 'stage-bg', x: s.x + 50, y: 30, width: 980, height: 800, rx: 12 }, svg);
+    const t = $('text', { class: 'stage-num', x: s.x + 75, y: 80 }, svg);
+    t.textContent = s.num;
+    const lbl = $('text', { class: 'stage-label', x: s.x + 110, y: 60 }, svg);
+    lbl.textContent = s.name;
+  });
+
+  // groups (visual rows)
+  const groupedByStage = {};
+  NODES.forEach(n => {
+    if (!groupedByStage[n.stage]) groupedByStage[n.stage] = {};
+    if (!groupedByStage[n.stage][n.group]) groupedByStage[n.stage][n.group] = [];
+    groupedByStage[n.stage][n.group].push(n);
+  });
+
+  // links
+  const linksLayer = $('g', { id: 'links-layer' }, svg);
+  LINKS.forEach((link, idx) => {
+    const a = nodeById(link.from);
+    const b = nodeById(link.to);
+    if (!a || !b) return;
+    
+    const x1 = a.x + a.w;
+    const y1 = a.y + NODE_H / 2;
+    const x2 = b.x;
+    const y2 = b.y + NODE_H / 2;
+    
+    const dx = x2 - x1;
+    const cp1x = x1 + Math.max(60, dx * 0.4);
+    const cp2x = x2 - Math.max(60, dx * 0.4);
+    
+    const path = $('path', {
+      class: `link ${link.kind}`,
+      d: `M ${x1} ${y1} C ${cp1x} ${y1}, ${cp2x} ${y2}, ${x2} ${y2}`,
+      'data-from': link.from,
+      'data-to': link.to,
+      'data-idx': idx,
+      'data-kind': link.kind
+    }, linksLayer);
+    
+    const colorMap = { dataflow: 'blue', content: 'green', synergy: 'yellow' };
+    path.setAttribute('marker-end', `url(#arrow-${colorMap[link.kind]})`);
+    if (link.added) path.setAttribute('opacity', '0.7');
+  });
+
+  // nodes
+  const nodesLayer = $('g', { id: 'nodes-layer' }, svg);
+  NODES.forEach(n => {
+    const g = $('g', {
+      class: `node ${n.kind === 'added' ? 'added' : ''}`,
+      'data-id': n.id,
+      transform: `translate(${n.x}, ${n.y})`
+    }, nodesLayer);
+    
+    $('rect', {
+      class: `node-bg ${n.kind === 'added' ? 'added' : ''} ${n.kind === 'hanging' ? 'hanging' : ''}`,
+      width: n.w, height: NODE_H, rx: 8
+    }, g);
+    
+    const txt = $('text', { class: 'node-label', x: 12, y: 22 }, g);
+    txt.textContent = n.title;
+    
+    const sub = $('text', { class: 'node-sublabel', x: 12, y: 40 }, g);
+    sub.textContent = n.group;
+    
+    g.addEventListener('click', e => { e.stopPropagation(); selectNode(n.id); });
+    g.addEventListener('mouseenter', () => { hoveredNode = n.id; applyHighlight(); });
+    g.addEventListener('mouseleave', () => { hoveredNode = null; applyHighlight(); });
+  });
+  
+  applyFilters();
+}
+
+function applyFilters() {
+  // links: filter by kind + route
+  document.querySelectorAll('#links-layer path').forEach(p => {
+    const kind = p.getAttribute('data-kind');
+    const from = p.getAttribute('data-from');
+    const to = p.getAttribute('data-to');
+    
+    let visible = true;
+    if (activeFilter !== 'all' && kind !== activeFilter) visible = false;
+    if (activeRoute !== 'all') {
+      const route = ROUTES[activeRoute];
+      if (!route.includes(from) || !route.includes(to)) visible = false;
+    }
+    p.style.display = visible ? '' : 'none';
+  });
+  
+  // nodes: dim if not in route
+  document.querySelectorAll('.node').forEach(g => {
+    const id = g.getAttribute('data-id');
+    if (activeRoute !== 'all' && !ROUTES[activeRoute].includes(id)) {
+      g.classList.add('dimmed');
+    } else {
+      g.classList.remove('dimmed');
+    }
+  });
+  
+  applyHighlight();
+}
+
+function applyHighlight() {
+  const focus = selectedNode || hoveredNode;
+  document.querySelectorAll('#links-layer path').forEach(p => {
+    if (!focus) {
+      p.classList.remove('highlighted', 'dimmed');
+    } else {
+      const from = p.getAttribute('data-from');
+      const to = p.getAttribute('data-to');
+      if (from === focus || to === focus) {
+        p.classList.add('highlighted'); p.classList.remove('dimmed');
+      } else {
+        p.classList.add('dimmed'); p.classList.remove('highlighted');
+      }
+    }
+  });
+  
+  document.querySelectorAll('.node').forEach(g => {
+    g.classList.toggle('selected', g.getAttribute('data-id') === selectedNode);
+  });
+}
+
+function selectNode(id) {
+  selectedNode = id;
+  applyHighlight();
+  renderDetails(id);
+}
+
+function renderDetails(id) {
+  const n = nodeById(id);
+  const stage = STAGES.find(s => s.id === n.stage);
+  const incoming = LINKS.filter(l => l.to === id);
+  const outgoing = LINKS.filter(l => l.from === id);
+  
+  let kindNote = '';
+  if (n.kind === 'added') kindNote = `<div class="note added">Узел дополнен: его нет в исходном документе или раскрыт сильнее.</div>`;
+  if (n.kind === 'hanging') kindNote = `<div class="note hanging">⚠ Висящий узел — методика не определена в исходнике, требуется отдельная карта или скил.</div>`;
+  
+  const optsHtml = n.options.map(o => {
+    const isHang = o.startsWith('🚩');
+    const isAdded = /\(доп\.\)/.test(o);
+    const cls = isHang ? 'option hanging' : (isAdded ? 'option added' : 'option');
+    return `<div class="${cls}">${o.replace('🚩 ', '🚩 ')}</div>`;
+  }).join('');
+  
+  const linkItem = (l, dir) => {
+    const otherId = dir === 'in' ? l.from : l.to;
+    const other = nodeById(otherId);
+    const arrow = dir === 'in' ? '←' : '→';
+    const colors = { dataflow: '#60a5fa', content: '#34d399', synergy: '#fbbf24' };
+    const labels = { dataflow: 'поток', content: 'по содержанию', synergy: 'синергия' };
+    const labelText = l.label ? `<div style="font-size:10px;color:#6c7280;margin-top:3px">${l.label}</div>` : '';
+    const addedTag = l.added ? '<span style="font-size:9px;color:#2dd4bf;margin-left:6px">[доп.]</span>' : '';
+    return `<div class="link-item" data-id="${otherId}">
+      <span style="color:${colors[l.kind]}">${labels[l.kind]}</span>
+      <span class="link-arrow">${arrow}</span>
+      <b style="color:#e8eaed">${other.title}</b>${addedTag}
+      ${labelText}
+    </div>`;
+  };
+  
+  const html = `
+    <h2>${n.title}</h2>
+    <span class="stage-badge" style="background:${stage.color}33;color:${stage.color}">${stage.num}. ${stage.name}</span>
+    <div style="font-size:11px;color:#6c7280;margin-bottom:10px;">${n.group}</div>
+    ${kindNote}
+    <div class="desc">${n.desc}</div>
+    <div class="options">
+      <div class="options-title">Варианты содержания</div>
+      ${optsHtml}
+    </div>
+    <div class="links-block">
+      <div class="link-group">
+        <div class="link-group-title">↑ На входе (${incoming.length})</div>
+        ${incoming.length ? incoming.map(l => linkItem(l, 'in')).join('') : '<div style="font-size:11px;color:#6c7280;padding:4px 0">Корневой узел</div>'}
+      </div>
+      <div class="link-group">
+        <div class="link-group-title">↓ Влияет на (${outgoing.length})</div>
+        ${outgoing.length ? outgoing.map(l => linkItem(l, 'out')).join('') : '<div style="font-size:11px;color:#6c7280;padding:4px 0">Терминальный узел</div>'}
+      </div>
+    </div>
+  `;
+  
+  const det = document.getElementById('details');
+  det.innerHTML = html;
+  det.querySelectorAll('.link-item').forEach(el => {
+    el.addEventListener('click', () => selectNode(el.getAttribute('data-id')));
+  });
+}
+
+// ============================================================================
+// PAN / ZOOM
+// ============================================================================
+let isPanning = false;
+let panStart = { x: 0, y: 0 };
+let vbStart = { x: 0, y: 0 };
+
+svg.addEventListener('mousedown', e => {
+  if (e.target.closest('.node')) return;
+  isPanning = true;
+  panStart = { x: e.clientX, y: e.clientY };
+  vbStart = { x: viewBox.x, y: viewBox.y };
+});
+
+window.addEventListener('mousemove', e => {
+  if (!isPanning) return;
+  const rect = svg.getBoundingClientRect();
+  const scale = viewBox.w / rect.width;
+  viewBox.x = vbStart.x - (e.clientX - panStart.x) * scale;
+  viewBox.y = vbStart.y - (e.clientY - panStart.y) * scale;
+  svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+});
+
+window.addEventListener('mouseup', () => isPanning = false);
+
+svg.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect = svg.getBoundingClientRect();
+  const mx = viewBox.x + (e.clientX - rect.left) / rect.width * viewBox.w;
+  const my = viewBox.y + (e.clientY - rect.top) / rect.height * viewBox.h;
+  const factor = e.deltaY > 0 ? 1.15 : 1/1.15;
+  viewBox.w *= factor;
+  viewBox.h *= factor;
+  viewBox.x = mx - (mx - viewBox.x) * factor;
+  viewBox.y = my - (my - viewBox.y) * factor;
+  svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+}, { passive: false });
+
+document.getElementById('zoom-in').onclick = () => { viewBox.w *= 0.85; viewBox.h *= 0.85; svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`); };
+document.getElementById('zoom-out').onclick = () => { viewBox.w *= 1.15; viewBox.h *= 1.15; svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`); };
+document.getElementById('zoom-reset').onclick = () => { viewBox = { x: -50, y: 0, w: 5000, h: 850 }; svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`); };
+
+// ============================================================================
+// FILTERS / ROUTES UI
+// ============================================================================
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeFilter = btn.getAttribute('data-filter');
+    applyFilters();
+  };
+});
+
+document.querySelectorAll('.route-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.route-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeRoute = btn.getAttribute('data-route');
+    applyFilters();
+  };
+});
+
+// ============================================================================
+// SEARCH
+// ============================================================================
+document.getElementById('search-input').addEventListener('input', e => {
+  const q = e.target.value.toLowerCase().trim();
+  if (!q) {
+    document.querySelectorAll('.node').forEach(g => g.classList.remove('dimmed'));
+    applyFilters();
+    return;
+  }
+  document.querySelectorAll('.node').forEach(g => {
+    const id = g.getAttribute('data-id');
+    const n = nodeById(id);
+    const match = n.title.toLowerCase().includes(q) || n.group.toLowerCase().includes(q) || n.options.some(o => o.toLowerCase().includes(q));
+    g.classList.toggle('dimmed', !match);
+  });
+});
+
+// initial
+renderSVG();
+
+// click outside to deselect
+svg.addEventListener('click', () => { selectedNode = null; applyHighlight(); document.getElementById('details').innerHTML = '<div id="empty-state">Выберите узел на карте,<br>чтобы увидеть его содержимое,<br>входы и выходы.</div>'; });
+
+</script>
+</body>
+</html>

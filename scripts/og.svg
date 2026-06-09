@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" font-family="'Helvetica Neue', 'Arial', sans-serif">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4f46e5"/>
+      <stop offset="0.27" stop-color="#0284c7"/>
+      <stop offset="0.52" stop-color="#db2777"/>
+      <stop offset="0.76" stop-color="#ea580c"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+    <radialGradient id="a1" cx="0.1" cy="0" r="0.7">
+      <stop offset="0" stop-color="#4f46e5" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#4f46e5" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="a2" cx="1" cy="0.05" r="0.6">
+      <stop offset="0" stop-color="#db2777" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#db2777" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="a3" cx="0.95" cy="1" r="0.6">
+      <stop offset="0" stop-color="#059669" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#059669" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="#f1f2f8"/>
+  <rect width="1200" height="630" fill="url(#a1)"/>
+  <rect width="1200" height="630" fill="url(#a2)"/>
+  <rect width="1200" height="630" fill="url(#a3)"/>
+
+  <!-- brand tile -->
+  <rect x="72" y="60" width="82" height="82" rx="19" fill="url(#tile)"/>
+  <path d="M98 86 V104 Q98 110 104 110 H122 Q128 110 128 116 V120"
+        fill="none" stroke="#ffffff" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="98" cy="86" r="7.2" fill="#ffffff"/>
+  <circle cx="128" cy="118" r="7.2" fill="#ffffff"/>
+
+  <!-- wordmark -->
+  <text x="176" y="98" font-size="30" font-weight="800" letter-spacing="3" fill="#14162a">MAJENTO</text>
+  <text x="176" y="128" font-size="19" font-weight="600" letter-spacing="1" fill="#79808f">deadcough / shima</text>
+
+  <!-- title -->
+  <text x="70" y="320" font-size="100" font-weight="800" letter-spacing="-3" fill="#14162a">Агентский</text>
+  <text x="70" y="420" font-size="100" font-weight="800" letter-spacing="-3" fill="#14162a">процесс</text>
+
+  <!-- subtitle -->
+  <text x="74" y="486" font-size="31" font-weight="600" fill="#4a4f66">Интерактивная карта пути от брифа</text>
+  <text x="74" y="528" font-size="31" font-weight="600" fill="#4a4f66">до финальной презентации</text>
+
+  <!-- right: swimlane levels -->
+  <g>
+    <g>
+      <rect x="712" y="64" width="416" height="86" rx="18" fill="#4f46e5" fill-opacity="0.12" stroke="#4f46e5" stroke-opacity="0.55" stroke-width="2"/>
+      <text x="740" y="122" font-size="46" font-weight="800" letter-spacing="-2" fill="#4f46e5">01</text>
+      <text x="816" y="116" font-size="32" font-weight="700" fill="#14162a">Брифинг</text>
+    </g>
+    <g>
+      <rect x="712" y="162" width="416" height="86" rx="18" fill="#0284c7" fill-opacity="0.12" stroke="#0284c7" stroke-opacity="0.55" stroke-width="2"/>
+      <text x="740" y="220" font-size="46" font-weight="800" letter-spacing="-2" fill="#0284c7">02</text>
+      <text x="816" y="214" font-size="32" font-weight="700" fill="#14162a">Стратег</text>
+    </g>
+    <g>
+      <rect x="712" y="260" width="416" height="86" rx="18" fill="#db2777" fill-opacity="0.12" stroke="#db2777" stroke-opacity="0.55" stroke-width="2"/>
+      <text x="740" y="318" font-size="46" font-weight="800" letter-spacing="-2" fill="#db2777">03</text>
+      <text x="816" y="312" font-size="32" font-weight="700" fill="#14162a">Креатор</text>
+    </g>
+    <g>
+      <rect x="712" y="358" width="416" height="86" rx="18" fill="#ea580c" fill-opacity="0.12" stroke="#ea580c" stroke-opacity="0.55" stroke-width="2"/>
+      <text x="740" y="416" font-size="46" font-weight="800" letter-spacing="-2" fill="#ea580c">04</text>
+      <text x="816" y="410" font-size="32" font-weight="700" fill="#14162a">Продюсер</text>
+    </g>
+    <g>
+      <rect x="712" y="456" width="416" height="86" rx="18" fill="#059669" fill-opacity="0.12" stroke="#059669" stroke-opacity="0.55" stroke-width="2"/>
+      <text x="740" y="514" font-size="46" font-weight="800" letter-spacing="-2" fill="#059669">05</text>
+      <text x="816" y="508" font-size="32" font-weight="700" fill="#14162a">Презентер</text>
+    </g>
+    <!-- flow dots between levels -->
+    <circle cx="754" cy="156" r="4" fill="#0284c7"/>
+    <circle cx="754" cy="254" r="4" fill="#db2777"/>
+    <circle cx="754" cy="352" r="4" fill="#ea580c"/>
+    <circle cx="754" cy="450" r="4" fill="#059669"/>
+  </g>
+</svg>
