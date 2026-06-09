@@ -21,6 +21,17 @@ const FILTERS: { id: LinkFilter; label: string; color: string }[] = [
   { id: 'synergy', label: 'Синергии', color: '#d97706' },
 ]
 
+const TgIcon = () => (
+  <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden>
+    <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.31l-2.72 12.81c-.19.92-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z" />
+  </svg>
+)
+
+const CONTACTS = [
+  { name: 'Serge Shima', handle: '@shimaoz', url: 'https://t.me/shimaoz' },
+  { name: 'Paul Deadcough', handle: '@pasha_v_tg', url: 'https://t.me/pasha_v_tg' },
+]
+
 const ROUTE_COLORS: Record<RouteId, string> = {
   all: '#334155',
   launch: '#4f46e5',
@@ -129,6 +140,27 @@ export function Sidebar({
             <kbd>⌃</kbd>+<kbd>колесо</kbd> / pinch — зум<br />
             <kbd>[</kbd> — панель · <kbd>F</kbd> — полный экран · <kbd>Esc</kbd> — закрыть
           </div>
+        </div>
+
+        <div className="section">
+          <div className="section__title">Контакты</div>
+          {CONTACTS.map((c) => (
+            <a
+              key={c.url}
+              className="contact"
+              href={c.url}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              <span className="contact__icon">
+                <TgIcon />
+              </span>
+              <span className="contact__text">
+                <b>{c.name}</b>
+                <span className="contact__handle">{c.handle}</span>
+              </span>
+            </a>
+          ))}
         </div>
       </div>
     </aside>
